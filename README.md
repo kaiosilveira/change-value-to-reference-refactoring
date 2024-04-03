@@ -1,45 +1,10 @@
-[![Continuous Integration](https://github.com/kaiosilveira/refactoring-catalog-template/actions/workflows/ci.yml/badge.svg)](https://github.com/kaiosilveira/refactoring-catalog-template/actions/workflows/ci.yml)
-
-# Refactoring catalog repository template
-
-This is a quick template to help me get a new refactoring repo going.
-
-## Things to do after creating a repo off of this template
-
-1. Run `yarn tools:cli prepare-repository -r <repo_name>`. It will:
-
-- Update the `README.md` file with the actual repository name, CI badge, and commit history link
-- Update `package.json` with the repository's name and remote URL
-- Update the repo's homepage on GitHub with:
-  - A description
-  - A website link to https://github.com/kaiosilveira/refactoring
-  - The following labels: javascript, refactoring, [REPOSITORY_NAME]
-
-2. Replace the lorem ipsum text sections below with actual text
-
-## Useful commands
-
-- Generate markdown containing a diff with patch information based on a range of commits:
-
-```bash
-yarn tools:cli generate-diff -f <first_commit_sha> -l <last_commit_sha>
-```
-
-- To generate the commit history table for the last section, including the correct links:
-
-```bash
-yarn tools:cli generate-cmt-table -r [REPOSITORY_NAME]
-```
-
----
+[![Continuous Integration](https://github.com/kaiosilveira/change-value-to-reference-refactoring/actions/workflows/ci.yml/badge.svg)](https://github.com/kaiosilveira/change-value-to-reference-refactoring/actions/workflows/ci.yml)
 
 ℹ️ _This repository is part of my Refactoring catalog based on Fowler's book with the same title. Please see [kaiosilveira/refactoring](https://github.com/kaiosilveira/refactoring) for more details._
 
 ---
 
-# Refactoring name
-
-**Formerly: Old name**
+# Change Value To Reference
 
 <table>
 <thead>
@@ -51,7 +16,7 @@ yarn tools:cli generate-cmt-table -r [REPOSITORY_NAME]
 <td>
 
 ```javascript
-result = initial.code;
+let customer = new Customer(customerData);
 ```
 
 </td>
@@ -59,11 +24,7 @@ result = initial.code;
 <td>
 
 ```javascript
-result = newCode();
-
-function newCode() {
-  return 'new code';
-}
+let customer = customerRepository.get(customerData.id);
 ```
 
 </td>
@@ -71,58 +32,171 @@ function newCode() {
 </tbody>
 </table>
 
-**Inverse of: [Another refactoring](https://github.com/kaiosilveira/refactoring)**
+**Inverse of: [Change Reference to Value](https://github.com/kaiosilveira/change-reference-to-value-refactoring)**
 
-**Refactoring introduction and motivation** dolore sunt deserunt proident enim excepteur et cillum duis velit dolor. Aute proident laborum officia velit culpa enim occaecat officia sunt aute labore id anim minim. Eu minim esse eiusmod enim nulla Lorem. Enim velit in minim anim anim ad duis aute ipsum voluptate do nulla. Ad tempor sint dolore et ullamco aute nulla irure sunt commodo nulla aliquip.
+Mutability is one of the most important aspects to be aware of in any software program. Ripple effects can cause hard-to-debug problems and flaky tests but, sometimes, they're exactly what we're expecting to happen. This refactoring helps in cases where we want our underlying objects (or data structures) to be mutable, often by protecting them and providing a standard, centralized, and memory-efficient way of retrieving them.
 
 ## Working example
 
-**Working example general explanation** proident reprehenderit mollit non voluptate ea aliquip ad ipsum anim veniam non nostrud. Cupidatat labore occaecat labore veniam incididunt pariatur elit officia. Aute nisi in nulla non dolor ullamco ut dolore do irure sit nulla incididunt enim. Cupidatat aliquip minim culpa enim. Fugiat occaecat qui nostrud nostrud eu exercitation Lorem pariatur fugiat ea consectetur pariatur irure. Officia dolore veniam duis duis eu eiusmod cupidatat laboris duis ad proident adipisicing. Minim veniam consectetur ut deserunt fugiat id incididunt reprehenderit.
+Our example, extracted from the book, is a program where we have orders and customers. Instances of the `Order` class instantiate a new `Customer` object every time an `Order` object is constructed. The code for the `Order` class looks like this:
+
+```javascript
+import { Customer } from '../customer';
+
+export class Order {
+  constructor(data) {
+    this._number = data.number;
+    this._customer = new Customer(data.customer);
+    // load other data
+  }
+
+  get customer() {
+    return this._customer;
+  }
+}
+```
+
+We want to stop this construction process by providing a standardized way of registering and fetching existing customers, by levaring the **[Repository Pattern](https://github.com/kaiosilveira/poeaa-repository)**.
 
 ### Test suite
 
-Occaecat et incididunt aliquip ex id dolore. Et excepteur et ea aute culpa fugiat consectetur veniam aliqua. Adipisicing amet reprehenderit elit qui.
+The test suite for this simple program is also pretty simple. For `Order`, we make sure that it has a customer:
 
 ```javascript
-describe('functionBeingRefactored', () => {
-  it('should work', () => {
-    expect(0).toEqual(1);
+describe('Order', () => {
+  it('should have a customer', () => {
+    const order = new Order({ number: '123', customer: '456' });
+    expect(order.customer.id).toBe('456');
   });
 });
 ```
 
-Magna ut tempor et ut elit culpa id minim Lorem aliqua laboris aliqua dolor. Irure mollit ad in et enim consequat cillum voluptate et amet esse. Fugiat incididunt ea nulla cupidatat magna enim adipisicing consequat aliquip commodo elit et. Mollit aute irure consequat sunt. Dolor consequat elit voluptate aute duis qui eu do veniam laborum elit quis.
+For `Customer`, we make sure it has an id:
+
+```javascript
+describe('Customer', () => {
+  it('should have an id', () => {
+    const customer = new Customer('456');
+    expect(customer.id).toBe('456');
+  });
+});
+```
+
+This is the minimum we need to make safe changes to the code.
 
 ### Steps
 
-**Step 1 description** mollit eu nulla mollit irure sint proident sint ipsum deserunt ad consectetur laborum incididunt aliqua. Officia occaecat deserunt in aute veniam sunt ad fugiat culpa sunt velit nulla. Pariatur anim sit minim sit duis mollit.
+As we're going to remove on-the-fly instantiations of `Customer`, we need to provide a standardized way of creating and retrieving its instances, so we introduce a `CustomerRepository`:
 
 ```diff
-diff --git a/src/price-order/index.js b/src/price-order/index.js
-@@ -3,6 +3,11 @@
--module.exports = old;
-+module.exports = new;
+@@ -0,0 +1,22 @@
++import { Customer } from '../customer';
++
++let _data = [];
++
++export class CustomerRepository {
++  static initialize() {
++    _data = {};
++    _data.customers = new Map();
++  }
++
++  static register(id) {
++    if (!_data.customers.has(id)) {
++      _data.customers.set(id, new Customer(id));
++    }
++
++    return this.find(id);
++  }
++
++  static find(id) {
++    return _data.customers.get(id);
++  }
++}
+
+diff --git a/src/customer-repository/index.test.js b/src/customer-repository/index.test.js
+new file mode 100644
+@@ -0,0 +1,28 @@
++import { CustomerRepository } from './index';
++
++describe('CustomerRepository', () => {
++  beforeEach(() => {
++    CustomerRepository.initialize();
++  });
++
++  describe('register', () => {
++    it('should create a new customer', () => {
++      const customer = CustomerRepository.register('123');
++      expect(customer.id).toBe('123');
++    });
++
++    it('should return the existing customer', () => {
++      const customer = CustomerRepository.register('123');
++      const customer2 = CustomerRepository.register('123');
++      expect(customer).toBe(customer2);
++    });
++  });
++
++  describe('find', () => {
++    it('should find a customer', () => {
++      const customer = CustomerRepository.register('123');
++      const foundCustomer = CustomerRepository.find('123');
++      expect(customer).toBe(foundCustomer);
++    });
++  });
++});
 ```
 
-**Step n description** mollit eu nulla mollit irure sint proident sint ipsum deserunt ad consectetur laborum incididunt aliqua. Officia occaecat deserunt in aute veniam sunt ad fugiat culpa sunt velit nulla. Pariatur anim sit minim sit duis mollit.
+Then, we can simply update `Order` to resolve its `Customer` from the repository:
 
 ```diff
-diff --git a/src/price-order/index.js b/src/price-order/index.js
-@@ -3,6 +3,11 @@
--module.exports = old;
-+module.exports = new;
+@@ -1,13 +1,12 @@
+-import { Customer } from '../customer';
+-
+ export class Order {
+   constructor(data) {
+     this._number = data.number;
+-    this._customer = new Customer(data.customer);
++    this._customer = data.customer;
++    this._customerRepository = data.customerRepository;
+     // load other data
+   }
+   get customer() {
+-    return this._customer;
++    return this._customerRepository.find(this._customer);
+   }
+ }
+
+diff --git a/src/order/index.test.js b/src/order/index.test.js
+@@ -1,8 +1,16 @@
++import { CustomerRepository } from '../customer-repository';
+ import { Order } from './index';
+-
+ describe('Order', () => {
+   it('should have a customer', () => {
+-    const order = new Order({ number: '123', customer: '456' });
++    CustomerRepository.initialize();
++    CustomerRepository.register('456');
++
++    const order = new Order({
++      number: '123',
++      customer: '456',
++      customerRepository: CustomerRepository,
++    });
++
+     expect(order.customer.id).toBe('456');
+   });
+ });
 ```
 
-And that's it!
+To simplify unit testing, the repository is passed down as a property to `Order`, so we can easily mock it.
 
 ### Commit history
 
 Below there's the commit history for the steps detailed above.
 
-| Commit SHA                                                                  | Message                  |
-| --------------------------------------------------------------------------- | ------------------------ |
-| [cmt-sha-1](https://github.com/kaiosilveira/[REPOSITORY_NAME]/commit-SHA-1) | description of commit #1 |
-| [cmt-sha-2](https://github.com/kaiosilveira/[REPOSITORY_NAME]/commit-SHA-2) | description of commit #2 |
-| [cmt-sha-n](https://github.com/kaiosilveira/[REPOSITORY_NAME]/commit-SHA-n) | description of commit #n |
+| Commit SHA                                                                                                                       | Message                                              |
+| -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| [cf4861d](https://github.com/kaiosilveira/change-value-to-reference-refactoring/commit/cf4861df3abdb511c74bc76ae1ac9862cdc35bcc) | introduce `CustomerRepository`                       |
+| [57f2128](https://github.com/kaiosilveira/change-value-to-reference-refactoring/commit/57f21288e711501301afb1bf02fd0dc85a11ce78) | update `Order` to resolve `Customer` from repository |
 
-For the full commit history for this project, check the [Commit History tab](https://github.com/kaiosilveira/[REPOSITORY_NAME]/commits/main).
+For the full commit history for this project, check the [Commit History tab](https://github.com/kaiosilveira/change-value-to-reference-refactoring/commits/main).
