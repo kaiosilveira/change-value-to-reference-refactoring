@@ -1,0 +1,17 @@
+{
+  "type": "module",
+  "name": "refactoring-catalog-template",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/kaiosilveira/refactoring-catalog-template.git",
+  "author": "Kaio Silveira <silveira.kaio@icloud.com>",
+  "license": "MIT",
+  "scripts": {
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest /src --passWithNoTests",
+    "tools:cli": "npx @kaiosilveira/refactoring-catalog-cli"
+  },
+  "devDependencies": {
+    "jest": "^29.0.3",
+    "@kaiosilveira/refactoring-catalog-cli": "0.7.34"
+  }
+}

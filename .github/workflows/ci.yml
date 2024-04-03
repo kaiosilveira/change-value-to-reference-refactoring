@@ -1,0 +1,30 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  Integration:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 18.17.1
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.17.1
+          cache: 'npm'
+
+      - name: Generate .npmrc
+        run: |
+          echo "registry=https://registry.npmjs.org/" >> .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run unit tests
+        run: npm run test
